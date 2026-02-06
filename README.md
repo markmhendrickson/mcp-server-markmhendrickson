@@ -1,26 +1,36 @@
 # Markmhendrickson MCP Server
 
-Read-only MCP server for markmhendrickson.com website content. It exposes posts, links, and timeline records stored in parquet via the parquet MCP server.
+Read-only MCP server for markmhendrickson.com website content backed by Neotoma. It exposes posts, links, and timeline records via Neotoma.
 
 ## Features
 
 - Read-only access to posts, links, and timeline
-- Optional filtering via parquet MCP filters
+- Optional filtering via Neotoma-backed datasets
 - Single combined response for all content
+
+## Public JSON endpoints (production)
+
+The same content is available as JSON at the site TLD for clients that prefer HTTP over MCP:
+
+- **Posts:** https://markmhendrickson.com/posts.json
+- **Links:** https://markmhendrickson.com/links.json
+- **Timeline:** https://markmhendrickson.com/timeline.json
+
+Cache generation runs before site builds; Neotoma (parquet) remains the source of truth.
 
 ## Tools
 
 ### 1. `markmhendrickson_get_posts`
 
-Return post records from Neotoma-backed parquet storage. Supports optional filters and returns the raw parquet records.
+Return post records from Neotoma. Supports optional filters and returns raw records.
 
 **Behavior:**
-- Returns full post records, including body and metadata fields present in parquet.
+- Returns full post records, including body and metadata fields present in Neotoma.
 - Use filters to limit results (published, category, slug, tags, etc.).
 - Order is the underlying parquet order unless a filter reduces it.
 
 **Parameters:**
-- `filters` (object, optional): Parquet filters such as `{ "published": true }`
+- `filters` (object, optional): Filters such as `{ "published": true }`
 
 **Example request:**
 ```json
@@ -50,14 +60,14 @@ Return post records from Neotoma-backed parquet storage. Supports optional filte
 
 ### 2. `markmhendrickson_get_links`
 
-Return link records from Neotoma-backed parquet storage. Supports optional filters and returns the raw parquet records.
+Return link records from Neotoma. Supports optional filters and returns raw records.
 
 **Behavior:**
 - Returns full link records, including display order and category.
 - Use filters to limit results (active, category, name, etc.).
 
 **Parameters:**
-- `filters` (object, optional): Parquet filters such as `{ "active": true }`
+- `filters` (object, optional): Filters such as `{ "active": true }`
 
 **Example request:**
 ```json
@@ -85,14 +95,14 @@ Return link records from Neotoma-backed parquet storage. Supports optional filte
 
 ### 3. `markmhendrickson_get_timeline`
 
-Return timeline records from Neotoma-backed parquet storage. Supports optional filters and returns the raw parquet records.
+Return timeline records from Neotoma. Supports optional filters and returns raw records.
 
 **Behavior:**
 - Returns full timeline records including location, entry type, and display order.
-- Descriptions are stored as JSON arrays or strings in parquet.
+- Descriptions are stored as JSON arrays or strings in Neotoma.
 
 **Parameters:**
-- `filters` (object, optional): Parquet filters such as `{ "entry_type": "work" }`
+- `filters` (object, optional): Filters such as `{ "entry_type": "work" }`
 
 **Example request:**
 ```json
@@ -176,8 +186,8 @@ pip install -r requirements.txt
 
 ### Environment Variables
 
-- `DATA_DIR` (required): Path to parquet data directory
-- `PARQUET_MCP_SERVER_PATH` (optional): Override parquet MCP server path
+- `DATA_DIR` (required): Path to Neotoma data directory
+- `PARQUET_MCP_SERVER_PATH` (optional): Override Neotoma storage adapter path
 
 The server loads environment variables from repo `.env`.
 
@@ -224,4 +234,4 @@ Common issues:
 
 - Read-only operations only
 - No credentials stored in code
-- Access to parquet data is controlled via environment configuration
+- Access to Neotoma data is controlled via environment configuration
