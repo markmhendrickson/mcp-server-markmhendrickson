@@ -2,31 +2,23 @@
 """
 MCP server for markmhendrickson.com website content.
 
-Provides read-only access to posts, links, and timeline records stored in parquet.
+Provides read-only access to posts, links, and timeline by fetching
+production JSON endpoints. No local parquet or DATA_DIR required.
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
-import sys
-from pathlib import Path
 from typing import Any, List
 
-from dotenv import load_dotenv
+import httpx
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-SERVER_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SERVER_DIR.parent.parent
-
-sys.path.insert(0, str(REPO_ROOT / "execution" / "scripts"))
-
-load_dotenv(REPO_ROOT / ".env")
-load_dotenv(SERVER_DIR / ".env")
-
-from parquet_client import ParquetMCPClient
+BASE_URL = "https://markmhendrickson.com/api"
+ENDPOINTS = {"posts": f"{BASE_URL}/posts.json", "links": f"{BASE_URL}/links.json", "timeline": f"{BASE_URL}/timeline.json"}
 
 app = Server("markmhendrickson")
 
@@ -35,22 +27,46 @@ def _error_response(message: str) -> List[TextContent]:
     return [TextContent(type="text", text=json.dumps({"success": False, "error": message}))]
 
 
-def _get_parquet_client() -> ParquetMCPClient:
-    parquet_server_path = REPO_ROOT / "mcp" / "parquet" / "parquet_mcp_server.py"
-    return ParquetMCPClient(parquet_server_path=str(parquet_server_path))
+def _apply_filters(items: List[dict], filters: dict[str, Any] | None) -> List[dict]:
+    if not filters or not items:
+        return items
+    out = []
+    for item in items:
+        match = True
+        for key, value in filters.items():
+            if key not in item or item[key] != value:
+                match = False
+                break
+        if match:
+            out.append(item)
+    return out
+
+
+async def _fetch_json(url: str) -> List[dict]:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        # Production returns { "url": "...", "posts": [...] } or { "links": [...] } etc.
+        for key in ("posts", "links", "timeline", "data"):
+            if key in data and isinstance(data[key], list):
+                return data[key]
+    return []
 
 
 async def _read_data(data_type: str, filters: dict[str, Any] | None) -> dict[str, Any]:
-    def _call() -> dict[str, Any]:
-        client = _get_parquet_client()
-        args: dict[str, Any] = {"data_type": data_type}
-        if filters:
-            args["filters"] = filters
-        return client.call_tool_sync("read_parquet", args)
-
-    result = await asyncio.to_thread(_call)
-    data = result.get("data", [])
-    return {"success": True, "data": data, "count": len(data)}
+    url = ENDPOINTS.get(data_type)
+    if not url:
+        return {"success": False, "error": f"Unknown data type: {data_type}", "data": [], "count": 0}
+    try:
+        raw = await _fetch_json(url)
+        data = _apply_filters(raw, filters)
+        return {"success": True, "data": data, "count": len(data)}
+    except httpx.HTTPError as e:
+        return {"success": False, "error": str(e), "data": [], "count": 0}
 
 
 async def _get_home_post() -> dict[str, Any]:
@@ -66,7 +82,7 @@ async def list_tools() -> List[Tool]:
     return [
         Tool(
             name="markmhendrickson_get_posts",
-            description="Return post records from parquet. Optional filters supported.",
+            description="Return post records from production (markmhendrickson.com). Optional filters supported. Production serves published posts only.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -79,7 +95,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="markmhendrickson_get_links",
-            description="Return links records from parquet. Optional filters supported.",
+            description="Return links records from production (markmhendrickson.com). Optional filters supported.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -92,7 +108,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="markmhendrickson_get_timeline",
-            description="Return timeline records from parquet. Optional filters supported.",
+            description="Return timeline records from production (markmhendrickson.com). Optional filters supported.",
             inputSchema={
                 "type": "object",
                 "properties": {

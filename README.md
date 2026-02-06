@@ -1,54 +1,70 @@
 # Markmhendrickson MCP Server
 
-Read-only MCP server for markmhendrickson.com website content backed by Neotoma. It exposes posts, links, and timeline records via Neotoma.
+Read-only MCP server that exposes [markmhendrickson.com](https://markmhendrickson.com) content to AI agents: posts, links, and timeline. It fetches **production JSON only**; no local data or environment variables are required.
 
-## Features
+## Overview
 
-- Read-only access to posts, links, and timeline
-- Optional filtering via Neotoma-backed datasets
-- Single combined response for all content
+| Aspect | Detail |
+|--------|--------|
+| **Data source** | Production API (`https://markmhendrickson.com/api/*.json`) |
+| **Operations** | Read-only; no credentials or local storage |
+| **Posts** | Published posts only (what is live on the site) |
 
-## Public JSON endpoints (production)
+## Data source
 
-The same content is available as JSON at the site TLD for clients that prefer HTTP over MCP:
+The server fetches from these public endpoints:
 
-- **Posts:** https://markmhendrickson.com/posts.json
-- **Links:** https://markmhendrickson.com/links.json
-- **Timeline:** https://markmhendrickson.com/timeline.json
+| Content | URL |
+|---------|-----|
+| Posts | `https://markmhendrickson.com/api/posts.json` |
+| Links | `https://markmhendrickson.com/api/links.json` |
+| Timeline | `https://markmhendrickson.com/api/timeline.json` |
 
-Cache generation runs before site builds; Neotoma (parquet) remains the source of truth.
+Filtering is applied in memory after fetch. All filters use exact key-value match on top-level fields (e.g. `{"slug": "some-slug"}`, `{"entry_type": "work"}`).
 
 ## Tools
 
-### 1. `markmhendrickson_get_posts`
+### Summary
 
-Return post records from Neotoma. Supports optional filters and returns raw records.
+| Tool | Purpose |
+|------|--------|
+| `markmhendrickson_get_posts` | Post records, with optional filters |
+| `markmhendrickson_get_links` | Link records, with optional filters |
+| `markmhendrickson_get_timeline` | Timeline records, with optional filters |
+| `markmhendrickson_get_all_content` | Posts, links, and timeline in one response |
+| `markmhendrickson_get_about` | Home/about post (slug `professional-mission`) |
 
-**Behavior:**
-- Returns full post records, including body and metadata fields present in Neotoma.
-- Use filters to limit results (published, category, slug, tags, etc.).
-- Order is the underlying parquet order unless a filter reduces it.
+---
 
-**Parameters:**
-- `filters` (object, optional): Filters such as `{ "published": true }`
+### `markmhendrickson_get_posts`
 
-**Example request:**
+Returns post records from production. Production serves published posts only; drafts are not included.
+
+**Parameters**
+
+- `filters` (object, optional): Exact-match filters, e.g. `{"category": "technical"}`, `{"slug": "truth-layer-agent-memory"}`.
+
+**Response**
+
+- `success` (boolean)
+- `data` (array of post objects)
+- `count` (number)
+
+**Example**
+
 ```json
-{
-  "filters": { "published": true }
-}
-```
+// Request
+{ "filters": { "slug": "truth-layer-agent-memory" } }
 
-**Example response:**
-```json
+// Response
 {
   "success": true,
   "data": [
     {
       "slug": "truth-layer-agent-memory",
-      "title": "Truth layer agent memory",
+      "title": "Building a truth layer for persistent agent memory",
       "published": true,
-      "published_date": "2026-01-20",
+      "published_date": "2026-02-02",
       "category": "technical",
       "read_time": 6,
       "tags": "[\"truth-layer\", \"agents\"]"
@@ -58,26 +74,27 @@ Return post records from Neotoma. Supports optional filters and returns raw reco
 }
 ```
 
-### 2. `markmhendrickson_get_links`
+---
 
-Return link records from Neotoma. Supports optional filters and returns raw records.
+### `markmhendrickson_get_links`
 
-**Behavior:**
-- Returns full link records, including display order and category.
-- Use filters to limit results (active, category, name, etc.).
+Returns link records (e.g. social, contact) from production.
 
-**Parameters:**
-- `filters` (object, optional): Filters such as `{ "active": true }`
+**Parameters**
 
-**Example request:**
+- `filters` (object, optional): Exact-match filters, e.g. `{"active": true}`.
+
+**Response**
+
+- `success`, `data` (array of link objects), `count`
+
+**Example**
+
 ```json
-{
-  "filters": { "active": true }
-}
-```
+// Request
+{ "filters": { "active": true } }
 
-**Example response:**
-```json
+// Response
 {
   "success": true,
   "data": [
@@ -93,26 +110,27 @@ Return link records from Neotoma. Supports optional filters and returns raw reco
 }
 ```
 
-### 3. `markmhendrickson_get_timeline`
+---
 
-Return timeline records from Neotoma. Supports optional filters and returns raw records.
+### `markmhendrickson_get_timeline`
 
-**Behavior:**
-- Returns full timeline records including location, entry type, and display order.
-- Descriptions are stored as JSON arrays or strings in Neotoma.
+Returns timeline records (e.g. work, education) from production.
 
-**Parameters:**
-- `filters` (object, optional): Filters such as `{ "entry_type": "work" }`
+**Parameters**
 
-**Example request:**
+- `filters` (object, optional): Exact-match filters, e.g. `{"entry_type": "work"}`.
+
+**Response**
+
+- `success`, `data` (array of timeline objects), `count`
+
+**Example**
+
 ```json
-{
-  "filters": { "entry_type": "work" }
-}
-```
+// Request
+{ "filters": { "entry_type": "work" } }
 
-**Example response:**
-```json
+// Response
 {
   "success": true,
   "data": [
@@ -120,78 +138,98 @@ Return timeline records from Neotoma. Supports optional filters and returns raw 
       "role": "Founder",
       "company": "Startup (Neotoma & Ateles)",
       "date": "2025 – Present · Barcelona, Spain",
-      "description": "[\"Building Neotoma, a truth layer for AI memory, and Ateles, a sovereign agentic operating system for personal workflow automation.\"]"
+      "description": "[\"Building Neotoma...\"]"
     }
   ],
   "count": 1
 }
 ```
 
-### 4. `markmhendrickson_get_all_content`
+---
 
-Return posts, links, and timeline records in a single response.
+### `markmhendrickson_get_all_content`
 
-**Behavior:**
-- Aggregates raw parquet records for posts, links, and timeline.
-- Includes `counts` for each dataset.
+Fetches all three endpoints and returns posts, links, and timeline in one response. No parameters.
 
-**Parameters:** none
+**Response**
 
-**Example response:**
+- `success` (boolean)
+- `posts` (array)
+- `links` (array)
+- `timeline` (array)
+- `counts` (object): `{ "posts": n, "links": n, "timeline": n }`
+
+**Example**
+
 ```json
 {
   "success": true,
-  "posts": [],
-  "links": [],
-  "timeline": [],
+  "posts": [...],
+  "links": [...],
+  "timeline": [...],
   "counts": {
-    "posts": 0,
-    "links": 0,
-    "timeline": 0
+    "posts": 25,
+    "links": 8,
+    "timeline": 12
   }
 }
 ```
 
-### 5. `markmhendrickson_get_about`
+---
 
-Return the home post (about page) content using the `professional-mission` slug.
+### `markmhendrickson_get_about`
 
-**Behavior:**
-- Returns a single post record if found.
-- Returns `success: false` if the home post is missing.
+Returns the home/about post (slug `professional-mission`). No parameters.
 
-**Parameters:** none
+**Response**
 
-**Example response:**
+- `success`, `data` (single post object), or on failure `success: false`, `error`, and optionally `slug`.
+
+**Example**
+
 ```json
 {
   "success": true,
   "data": {
     "slug": "professional-mission",
-    "title": "Professional mission",
-    "published": true
+    "title": "Mark Hendrickson",
+    "published": true,
+    "excerpt": "Building sovereign systems..."
   }
 }
 ```
 
+## Error responses
+
+On failure, the server returns JSON with:
+
+- `success`: `false`
+- `error`: string (e.g. HTTP error, timeout)
+- `data`: `[]` for list tools; omitted for `get_about`
+
+Example: `{"success": false, "error": "Connection timeout", "data": [], "count": 0}`.
+
+## Requirements
+
+- Python 3.10+
+- Dependencies: `mcp`, `httpx` (see `requirements.txt`)
+
 ## Installation
 
 ```bash
+cd mcp/markmhendrickson
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ## Configuration
 
-### Environment Variables
+No environment variables are required. The server uses fixed production URLs.
 
-- `DATA_DIR` (required): Path to Neotoma data directory
-- `PARQUET_MCP_SERVER_PATH` (optional): Override Neotoma storage adapter path
+### Cursor
 
-The server loads environment variables from repo `.env`.
-
-### Cursor MCP Configuration
+Add to your MCP config (e.g. `.cursor/mcp.json`). The working directory for the command must be the repository root when using a relative path:
 
 ```json
 {
@@ -204,7 +242,9 @@ The server loads environment variables from repo `.env`.
 }
 ```
 
-### Claude Desktop Configuration
+### Claude Desktop
+
+Use an absolute path so the server runs regardless of working directory:
 
 ```json
 {
@@ -217,21 +257,28 @@ The server loads environment variables from repo `.env`.
 }
 ```
 
+If you use a venv, point `command` at the venv Python and ensure `httpx` is installed in that venv.
+
 ## Running
 
+From the repo root:
+
 ```bash
-./run-markmhendrickson-mcp.sh
+./mcp/markmhendrickson/run-markmhendrickson-mcp.sh
 ```
 
-## Error Handling and Troubleshooting
+The script uses the repo `execution/venv` if present, otherwise system `python3`.
 
-Common issues:
-- Missing `DATA_DIR`: Ensure `.env` includes `DATA_DIR`
-- Missing dependencies: `pip install -r requirements.txt`
-- Parquet MCP path issues: Set `PARQUET_MCP_SERVER_PATH`
+## Troubleshooting
 
-## Security Notes
+| Issue | What to do |
+|-------|------------|
+| `success: false` with connection/HTTP error | Check network; production site must be reachable. |
+| Import or runtime error | Install deps: `pip install -r requirements.txt` (in the same env used to run the server). |
+| Cursor doesn’t see the server | Ensure the MCP config path is correct and the process starts (check Cursor logs). |
 
-- Read-only operations only
-- No credentials stored in code
-- Access to Neotoma data is controlled via environment configuration
+## Security
+
+- Read-only: the server does not write or modify any data.
+- No credentials or secrets in code; it only reads public JSON URLs.
+- No local data access; all content comes from the production site.
