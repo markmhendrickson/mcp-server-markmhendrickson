@@ -18,13 +18,19 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 BASE_URL = "https://markmhendrickson.com/api"
-ENDPOINTS = {"posts": f"{BASE_URL}/posts.json", "links": f"{BASE_URL}/links.json", "timeline": f"{BASE_URL}/timeline.json"}
+ENDPOINTS = {
+    "posts": f"{BASE_URL}/posts.json",
+    "links": f"{BASE_URL}/links.json",
+    "timeline": f"{BASE_URL}/timeline.json",
+}
 
 app = Server("markmhendrickson")
 
 
 def _error_response(message: str) -> List[TextContent]:
-    return [TextContent(type="text", text=json.dumps({"success": False, "error": message}))]
+    return [
+        TextContent(type="text", text=json.dumps({"success": False, "error": message}))
+    ]
 
 
 def _apply_filters(items: List[dict], filters: dict[str, Any] | None) -> List[dict]:
@@ -60,7 +66,12 @@ async def _fetch_json(url: str) -> List[dict]:
 async def _read_data(data_type: str, filters: dict[str, Any] | None) -> dict[str, Any]:
     url = ENDPOINTS.get(data_type)
     if not url:
-        return {"success": False, "error": f"Unknown data type: {data_type}", "data": [], "count": 0}
+        return {
+            "success": False,
+            "error": f"Unknown data type: {data_type}",
+            "data": [],
+            "count": 0,
+        }
     try:
         raw = await _fetch_json(url)
         data = _apply_filters(raw, filters)
@@ -73,7 +84,11 @@ async def _get_home_post() -> dict[str, Any]:
     data = await _read_data("posts", {"slug": "professional-mission"})
     posts = data.get("data", [])
     if not posts:
-        return {"success": False, "error": "Home post not found", "slug": "professional-mission"}
+        return {
+            "success": False,
+            "error": "Home post not found",
+            "slug": "professional-mission",
+        }
     return {"success": True, "data": posts[0]}
 
 
@@ -88,7 +103,7 @@ async def list_tools() -> List[Tool]:
                 "properties": {
                     "filters": {
                         "type": "object",
-                        "description": "Optional filters to apply (e.g., {\"published\": true})",
+                        "description": 'Optional filters to apply (e.g., {"published": true})',
                     }
                 },
             },
@@ -101,7 +116,7 @@ async def list_tools() -> List[Tool]:
                 "properties": {
                     "filters": {
                         "type": "object",
-                        "description": "Optional filters to apply (e.g., {\"active\": true})",
+                        "description": 'Optional filters to apply (e.g., {"active": true})',
                     }
                 },
             },
@@ -114,7 +129,7 @@ async def list_tools() -> List[Tool]:
                 "properties": {
                     "filters": {
                         "type": "object",
-                        "description": "Optional filters to apply (e.g., {\"entry_type\": \"work\"})",
+                        "description": 'Optional filters to apply (e.g., {"entry_type": "work"})',
                     }
                 },
             },
