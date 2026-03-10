@@ -22,6 +22,8 @@ ENDPOINTS = {
     "posts": f"{BASE_URL}/posts.json",
     "links": f"{BASE_URL}/links.json",
     "timeline": f"{BASE_URL}/timeline.json",
+    "meet": f"{BASE_URL}/meet.json",
+    "consulting": f"{BASE_URL}/consulting.json",
 }
 
 app = Server("markmhendrickson")
@@ -57,7 +59,7 @@ async def _fetch_json(url: str) -> List[dict]:
         return data
     if isinstance(data, dict):
         # Production returns { "url": "...", "posts": [...] } or { "links": [...] } etc.
-        for key in ("posts", "links", "timeline", "data"):
+        for key in ("posts", "links", "timeline", "meet", "consulting", "data"):
             if key in data and isinstance(data[key], list):
                 return data[key]
     return []
@@ -136,12 +138,22 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="markmhendrickson_get_all_content",
-            description="Return posts, links, and timeline records in a single response.",
+            description="Return posts, links, timeline, meet, and consulting records in a single response.",
             inputSchema={"type": "object", "properties": {}},
         ),
         Tool(
             name="markmhendrickson_get_about",
             description="Return the home post (about page) content.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="markmhendrickson_get_meet",
+            description="Return meet page content from production.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="markmhendrickson_get_consulting",
+            description="Return consulting page content from production.",
             inputSchema={"type": "object", "properties": {}},
         ),
     ]
@@ -178,21 +190,35 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
             posts = await _read_data("posts", None)
             links = await _read_data("links", None)
             timeline = await _read_data("timeline", None)
+            meet = await _read_data("meet", None)
+            consulting = await _read_data("consulting", None)
             result = {
                 "success": True,
                 "posts": posts.get("data", []),
                 "links": links.get("data", []),
                 "timeline": timeline.get("data", []),
+                "meet": meet.get("data", []),
+                "consulting": consulting.get("data", []),
             }
             result["counts"] = {
                 "posts": len(result["posts"]),
                 "links": len(result["links"]),
                 "timeline": len(result["timeline"]),
+                "meet": len(result["meet"]),
+                "consulting": len(result["consulting"]),
             }
             return [TextContent(type="text", text=json.dumps(result))]
 
         if name == "markmhendrickson_get_about":
             result = await _get_home_post()
+            return [TextContent(type="text", text=json.dumps(result))]
+
+        if name == "markmhendrickson_get_meet":
+            result = await _read_data("meet", None)
+            return [TextContent(type="text", text=json.dumps(result))]
+
+        if name == "markmhendrickson_get_consulting":
+            result = await _read_data("consulting", None)
             return [TextContent(type="text", text=json.dumps(result))]
 
         return _error_response(f"Unknown tool: {name}")
