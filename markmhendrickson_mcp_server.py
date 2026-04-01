@@ -22,8 +22,10 @@ ENDPOINTS = {
     "posts": f"{BASE_URL}/posts.json",
     "links": f"{BASE_URL}/links.json",
     "timeline": f"{BASE_URL}/timeline.json",
+    "pages": f"{BASE_URL}/pages.json",
     "meet": f"{BASE_URL}/meet.json",
     "consulting": f"{BASE_URL}/consulting.json",
+    "investing": f"{BASE_URL}/investing.json",
 }
 
 app = Server("markmhendrickson")
@@ -59,7 +61,7 @@ async def _fetch_json(url: str) -> List[dict]:
         return data
     if isinstance(data, dict):
         # Production returns { "url": "...", "posts": [...] } or { "links": [...] } etc.
-        for key in ("posts", "links", "timeline", "meet", "consulting", "data"):
+        for key in ("posts", "links", "timeline", "pages", "meet", "consulting", "investing", "data"):
             if key in data and isinstance(data[key], list):
                 return data[key]
     return []
@@ -138,7 +140,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="markmhendrickson_get_all_content",
-            description="Return posts, links, timeline, meet, and consulting records in a single response.",
+            description="Return posts, links, timeline, pages, meet, consulting, and investing records in a single response.",
             inputSchema={"type": "object", "properties": {}},
         ),
         Tool(
@@ -154,6 +156,16 @@ async def list_tools() -> List[Tool]:
         Tool(
             name="markmhendrickson_get_consulting",
             description="Return consulting page content from production.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="markmhendrickson_get_investing",
+            description="Return investing page content from production.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="markmhendrickson_get_pages",
+            description="Return static page API index from production.",
             inputSchema={"type": "object", "properties": {}},
         ),
     ]
@@ -190,22 +202,28 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
             posts = await _read_data("posts", None)
             links = await _read_data("links", None)
             timeline = await _read_data("timeline", None)
+            pages = await _read_data("pages", None)
             meet = await _read_data("meet", None)
             consulting = await _read_data("consulting", None)
+            investing = await _read_data("investing", None)
             result = {
                 "success": True,
                 "posts": posts.get("data", []),
                 "links": links.get("data", []),
                 "timeline": timeline.get("data", []),
+                "pages": pages.get("data", []),
                 "meet": meet.get("data", []),
                 "consulting": consulting.get("data", []),
+                "investing": investing.get("data", []),
             }
             result["counts"] = {
                 "posts": len(result["posts"]),
                 "links": len(result["links"]),
                 "timeline": len(result["timeline"]),
+                "pages": len(result["pages"]),
                 "meet": len(result["meet"]),
                 "consulting": len(result["consulting"]),
+                "investing": len(result["investing"]),
             }
             return [TextContent(type="text", text=json.dumps(result))]
 
@@ -219,6 +237,14 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
 
         if name == "markmhendrickson_get_consulting":
             result = await _read_data("consulting", None)
+            return [TextContent(type="text", text=json.dumps(result))]
+
+        if name == "markmhendrickson_get_investing":
+            result = await _read_data("investing", None)
+            return [TextContent(type="text", text=json.dumps(result))]
+
+        if name == "markmhendrickson_get_pages":
+            result = await _read_data("pages", None)
             return [TextContent(type="text", text=json.dumps(result))]
 
         return _error_response(f"Unknown tool: {name}")

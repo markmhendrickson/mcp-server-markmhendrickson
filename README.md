@@ -1,6 +1,6 @@
 # Markmhendrickson MCP Server
 
-Read-only MCP server that exposes [markmhendrickson.com](https://markmhendrickson.com) content to AI agents: posts, links, timeline, meet, and consulting. It fetches **production JSON only**; no local data or environment variables are required.
+Read-only MCP server that exposes [markmhendrickson.com](https://markmhendrickson.com) content to AI agents: posts, links, timeline, pages, meet, consulting, and investing. It fetches **production JSON only**; no local data or environment variables are required.
 
 ## Overview
 
@@ -19,8 +19,10 @@ The server fetches from these public endpoints:
 | Posts | `https://markmhendrickson.com/api/posts.json` |
 | Links | `https://markmhendrickson.com/api/links.json` |
 | Timeline | `https://markmhendrickson.com/api/timeline.json` |
+| Pages | `https://markmhendrickson.com/api/pages.json` |
 | Meet | `https://markmhendrickson.com/api/meet.json` |
 | Consulting | `https://markmhendrickson.com/api/consulting.json` |
+| Investing | `https://markmhendrickson.com/api/investing.json` |
 
 Filtering is applied in memory after fetch. All filters use exact key-value match on top-level fields (e.g. `{"slug": "some-slug"}`, `{"entry_type": "work"}`).
 
@@ -33,10 +35,12 @@ Filtering is applied in memory after fetch. All filters use exact key-value matc
 | `markmhendrickson_get_posts` | Post records, with optional filters |
 | `markmhendrickson_get_links` | Link records, with optional filters |
 | `markmhendrickson_get_timeline` | Timeline records, with optional filters |
-| `markmhendrickson_get_all_content` | Posts, links, timeline, meet, and consulting in one response |
+| `markmhendrickson_get_all_content` | Posts, links, timeline, pages, meet, consulting, and investing in one response |
 | `markmhendrickson_get_about` | Home/about post (slug `professional-mission`) |
 | `markmhendrickson_get_meet` | Meet page content |
 | `markmhendrickson_get_consulting` | Consulting page content |
+| `markmhendrickson_get_investing` | Investing page content |
+| `markmhendrickson_get_pages` | Static pages index |
 
 ---
 
@@ -153,7 +157,7 @@ Returns timeline records (e.g. work, education) from production.
 
 ### `markmhendrickson_get_all_content`
 
-Fetches all endpoints and returns posts, links, timeline, meet, and consulting in one response. No parameters.
+Fetches all endpoints and returns posts, links, timeline, pages, meet, consulting, and investing in one response. No parameters.
 
 **Response**
 
@@ -161,9 +165,11 @@ Fetches all endpoints and returns posts, links, timeline, meet, and consulting i
 - `posts` (array)
 - `links` (array)
 - `timeline` (array)
+- `pages` (array)
 - `meet` (array)
 - `consulting` (array)
-- `counts` (object): `{ "posts": n, "links": n, "timeline": n, "meet": n, "consulting": n }`
+- `investing` (array)
+- `counts` (object): `{ "posts": n, "links": n, "timeline": n, "pages": n, "meet": n, "consulting": n, "investing": n }`
 
 **Example**
 
@@ -173,14 +179,18 @@ Fetches all endpoints and returns posts, links, timeline, meet, and consulting i
   "posts": [...],
   "links": [...],
   "timeline": [...],
+  "pages": [...],
   "meet": [...],
   "consulting": [...],
+  "investing": [...],
   "counts": {
     "posts": 25,
     "links": 8,
     "timeline": 12,
+    "pages": 3,
     "meet": 1,
-    "consulting": 1
+    "consulting": 1,
+    "investing": 1
   }
 }
 ```
@@ -204,6 +214,26 @@ Returns consulting page content from production. No parameters.
 **Response**
 
 - `success`, `data` (array of consulting page records), `count`
+
+---
+
+### `markmhendrickson_get_investing`
+
+Returns investing page content from production. No parameters.
+
+**Response**
+
+- `success`, `data` (array of investing page records), `count`
+
+---
+
+### `markmhendrickson_get_pages`
+
+Returns static pages index from production. No parameters.
+
+**Response**
+
+- `success`, `data` (array of page index records), `count`
 
 ---
 
